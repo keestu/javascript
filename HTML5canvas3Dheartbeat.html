@@ -1,0 +1,270 @@
+/*
+    HTML5 canvas 3D heart beat simulation
+    Copyright (C) 2012  Tappali Ekanathan Keestu (keestu@gmail.com)
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+<!DOCTYPE>
+<html>
+    <head>
+        <title> Heart Beat </title>
+        <script>
+            var wd, ht;
+            /* For Frame rate */
+            var lastTime;
+            var frames        = 0;
+            var totalTime     = 0;
+            var updateTime    = 0;
+            var updateFrames  = 0;
+
+            function printf(text) {
+                document.writeln(text);
+                }
+
+            function get_random(scale) {
+                return (Math.random() * scale);
+                }
+
+            function get_negate(scale) {
+                if (0 == ((Math.floor(Math.random() * scale))/7)) {
+                    return -1;
+                    }
+                else {
+                    return 1;
+                    }
+                }
+
+            function colorToHex (r,g,b) {
+                var rgb = b | (g << 8) | (r << 16);
+                if (0 == r) {
+                    var rPad = '00';
+                    if (0 == g) {
+                        var gPad = '00';
+                        if (0 == b) {
+                            var bPad = '00';
+                            return '#' + rPad + gPad + +bPad;
+                            }
+                        else {
+                            return '#' + rPad + gPad + rgb.toString(16);
+                            }
+                        }
+                    else {
+                        return '#' + rPad + rgb.toString(16);
+                        }
+                    }
+                return '#' + rgb.toString(16);
+                }
+
+            function initiateFPS() {
+                /* For Frame rate - store initial time */
+                lastTime = (new Date()).getTime();
+                }
+
+            function updateFPS() {
+                /* update Frame rate */
+                var now = (new Date()).getTime();
+
+                var delta    = now - lastTime;
+                lastTime     = now;
+
+                totalTime    = totalTime  + delta;
+                updateTime   = updateTime + delta;
+
+                frames       = frames       + 1;
+                updateFrames = updateFrames + 1;
+
+                if (1000 < updateTime) {
+                    document.getElementById('fps').innerHTML = "FPS AVG: " + Math.floor(1000*frames/totalTime) + " CUR: " + Math.floor(1000*updateFrames/updateTime);
+                    updateTime   = 0;
+                    updateFrames = 0;
+                    }
+                }
+
+            function drawCanvas () {
+                printf('<canvas id="canvas" width="'+wd+'" height="'+ht+'"></canvas>');
+                printf('<font color = "white"><b id="fps"></b></font>');
+                }
+
+            function alterCanvas () {
+                var canvas          = document.getElementById("canvas");
+                var baseHeartX      = wd/2;
+                var baseHeartY      = ht/2;
+                var baseheartSizeHt = 100;
+                var variationIndex  = -20;
+
+                function reset() {
+                    // clear canvas
+                    ctx.clearRect(0,0,wd,ht);
+                    }
+
+                function drawMyHeart() {
+                    /* Multi layer heart symbol simulation
+                     ____________________ X
+                    |
+                    |       ./ * \.
+                    |        \   /
+                    |         \ /
+                    |          *
+                    |
+                    Y
+
+                    To simulate this first we need to know a simple concept of drawing the thing
+                    on the graph sheet/browser.
+                    A 3D object can be simulated using multilayer 2D thus giving the impression of
+                    a real world heart shape and of-course a tweak in the alpha to give a glass effect.
+
+                    We start with a start and end point. Draw continuous quadratic curves.
+                    This can be done for one side and the other side is nothing but a mirror in a graph.
+
+                    e.g. Drawing from bottom to top for a single heart shape
+                    Start (100, 200) - consider the botton * on the above graph
+                    (consider X1,Y1 as the coordinate)
+
+                    Control point on the left (15, 55) Consider the . on the left side of the graph
+
+                    End   (100, 110) - consider the top * on the above graph
+                    (consider X1,Y2 as the coordinate)
+                    The only variation when drawing the other side is the other control point
+                    Control point on the right (185,55) Consider the . on the right side of the graph
+
+                    Calculating for X position for the control point
+                    Left side                              = 100 - 85   = 15
+                    Right side                             = 100 + 85   = 185
+                    Y position for the control point will not change     = 55
+                    Distance between top and bottom points = 200 - 110  = 90
+
+                    Going to consider
+                    Control point X scaling     (X1 +- 94% * height)
+                    Control point Y positioning (Y2 - [61% * height])
+                    */
+
+                    /* Control point Y2 */
+                    var heartSizeHt = baseheartSizeHt + variationIndex;
+                    var Y2          = (baseHeartY-heartSizeHt) - (0.61 * heartSizeHt);
+
+                    /* Half hearted? Draw the left heart */
+                    ctx.beginPath();
+                    ctx.moveTo(baseHeartX,baseHeartY);
+                    ctx.quadraticCurveTo((baseHeartX - (0.94 * heartSizeHt)),Y2,baseHeartX,baseHeartY-heartSizeHt);
+                    ctx.stroke();
+                    ctx.fill();
+
+                    /* Mirror to the right heart */
+                    ctx.beginPath();
+                    ctx.moveTo(baseHeartX,baseHeartY);
+                    ctx.quadraticCurveTo((baseHeartX + (0.94 * heartSizeHt)),Y2,baseHeartX,baseHeartY-heartSizeHt);
+                    ctx.stroke();
+                    ctx.fill();
+                    }
+
+                function reDrawMyHeart() {
+                    /* The first heart portion is drawn to give it a definitive shape 
+                       The below is for special effects
+                    */
+                    var heartSizeHt = baseheartSizeHt + variationIndex + 1;
+                    var Y2          = (baseHeartY-heartSizeHt) - (0.61 * heartSizeHt);
+
+                    ctx.globalAlpha = 0.2;
+                    while (heartSizeHt != (baseheartSizeHt + (-1 * variationIndex))) {
+                        ctx.globalCompositeOperation = "destination-over";
+                        /* Half hearted? Draw the left heart */
+                        ctx.beginPath();
+                        ctx.moveTo(baseHeartX,baseHeartY);
+                        ctx.quadraticCurveTo((baseHeartX - (0.94 * heartSizeHt)),Y2,baseHeartX,baseHeartY-heartSizeHt);
+                        ctx.stroke();
+                        ctx.fill();
+                        /* Mirror to the right heart */
+                        ctx.beginPath();
+                        ctx.moveTo(baseHeartX,baseHeartY);
+                        ctx.quadraticCurveTo((baseHeartX + (0.94 * heartSizeHt)),Y2,baseHeartX,baseHeartY-heartSizeHt);
+                        ctx.stroke();
+                        ctx.fill();
+
+                        ctx.shadowBlur  = ctx.shadowBlur  + 0.1;
+                        ctx.globalAlpha = ctx.globalAlpha - 0.01;
+                        heartSizeHt     = heartSizeHt     + 1;
+                        }
+                    }
+
+                function glowHeart() {
+                    var heartSizeHt  = baseheartSizeHt + (variationIndex * -1) + get_random(100);
+                    var Y2           = (baseHeartY-heartSizeHt) - (0.61 * heartSizeHt);
+
+                    ctx.shadowColor  = colorToHex(get_random(255),get_random(255),get_random(255));
+                    ctx.strokeStyle  = colorToHex(get_random(255),get_random(255),get_random(255));
+
+                    if (get_negate(2) > 0) {
+                        ctx.globalCompositeOperation = "lighter";
+                        }
+                    else {
+                        ctx.globalCompositeOperation = "xor";
+                        }
+                    /* Half hearted? Draw the left heart */
+                    ctx.beginPath();
+                    ctx.moveTo(baseHeartX,baseHeartY);
+                    ctx.quadraticCurveTo((baseHeartX - (0.94 * heartSizeHt)),Y2,baseHeartX,baseHeartY-heartSizeHt);
+                    ctx.stroke();
+                    ctx.fill();
+
+                    /* Mirror to the right heart */
+                    ctx.beginPath();
+                    ctx.moveTo(baseHeartX,baseHeartY);
+                    ctx.quadraticCurveTo((baseHeartX + (0.94 * heartSizeHt)),Y2,baseHeartX,baseHeartY-heartSizeHt);
+                    ctx.stroke();
+                    ctx.fill();
+                    updateFPS();
+                    }
+
+                /* Functions over. Write code to call above when required */
+                if (canvas.getContext) {
+                    var ctx                      = canvas.getContext("2d");
+                    ctx.fillStyle                = "red";
+                    ctx.lineCap                  = "round";
+                    ctx.lineWidth                = 1;
+                    ctx.shadowColor              = "#FEFCD7";
+                    ctx.shadowBlur               = 10;
+                    ctx.strokeStyle              = "#FF00DF";
+                    ctx.globalAlpha              = 0.5;
+                    ctx.globalCompositeOperation = "lighter";
+                    initiateFPS();
+                    /* Draw the heart */
+                    //drawMyHeart();
+                    /* Redraw the hearts for te 3D effect */
+                    //reDrawMyHeart();
+                    /* Final special effect */
+                    window.canvasTimer = setInterval(glowHeart, 10);
+                    }
+                else {
+                    printf('<font color = "white"><b id="fps1">No HTML5</b></font>');
+                    }
+                }
+
+            function GODSMain() {
+                drawCanvas();
+                alterCanvas();
+                }
+        </script>
+    </head>
+    <body bgcolor = "black">
+        <script>
+            wd = document.body.clientWidth  - 10;
+            if (document.body.clientHeight > document.documentElement.clientHeight) {
+                ht = document.body.clientHeight - 40;
+                }
+            else {
+                ht = document.documentElement.clientHeight - 40;
+                }
+            GODSMain();
+        </script>
+    </body>
+</html>
