@@ -1,0 +1,259 @@
+/*
+    HTML5 canvas 2D A thousand stars
+    Copyright (C) 2012  Tappali Ekanathan Keestu (keestu@gmail.com)
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+<!DOCTYPE>
+<html>
+    <head>
+        <title> A Thousand Stars </title>
+        <script>
+            var wd, ht;
+
+            /* For Frame rate */
+            var lastTime;
+            var frames        = 0;
+            var totalTime     = 0;
+            var updateTime    = 0;
+            var updateFrames  = 0;
+
+            function printf(text) {
+                document.writeln(text);
+                }
+
+            function makeArray(len) {
+                this.length = len;
+                return this;
+                }
+
+            function getRandom(scale) {
+                return (Math.random() * scale);
+                }
+
+            function getNegate(scale) {
+                if (0 == ((Math.floor(Math.random() * scale))/7)) {
+                    return -1;
+                    }
+                else {
+                    return 1;
+                    }
+                }
+
+            function colorToHex (r,g,b) {
+                var rgb = b | (g << 8) | (r << 16);
+                if (0 == r) {
+                    var rPad = '00';
+                    if (0 == g) {
+                        var gPad = '00';
+                        if (0 == b) {
+                            var bPad = '00';
+                            return '#' + rPad + gPad + +bPad;
+                            }
+                        else {
+                            return '#' + rPad + gPad + rgb.toString(16);
+                            }
+                        }
+                    else {
+                        return '#' + rPad + rgb.toString(16);
+                        }
+                    }
+                return '#' + rgb.toString(16);
+                }
+
+            function initiateFPS() {
+                /* For Frame rate - store initial time */
+                lastTime = (new Date()).getTime();
+                }
+
+            function updateFPS() {
+                /* update Frame rate */
+                var now = (new Date()).getTime();
+
+                var delta    = now - lastTime;
+                lastTime     = now;
+
+                totalTime    = totalTime  + delta;
+                updateTime   = updateTime + delta;
+
+                frames       = frames       + 1;
+                updateFrames = updateFrames + 1;
+
+                if (1000 < updateTime) {
+                    document.getElementById('fps').innerHTML = "FPS AVG: " + Math.floor(1000*frames/totalTime)
+                      + " CUR: " + Math.floor(1000*updateFrames/updateTime);
+                    updateTime   = 0;
+                    updateFrames = 0;
+                    }
+                }
+
+            function definePipeObject(x,y,width,radius) {
+                pipe         = new Object();
+
+                /* Constructor is the definition of the function itself */
+                pipe.x       = x;
+                pipe.y       = y;
+                pipe.width   = width;
+                pipe.radius  = radius;
+
+                /* Destructor                                           */
+                pipe.destroy = function() {
+                    delete this.x;
+                    delete this.y;
+                    delete this.width;
+                    delete this.radius;
+                    delete this;
+                    };
+
+                return pipe;
+                }
+
+            function drawCanvas () {
+                printf('<canvas id="canvas" width="'+wd+'" height="'+ht+'"></canvas>');
+                printf('<font color = "white"><b id="fps"></b></font>');
+                }
+
+            function alterCanvas() {
+                /* Object Orientation simulation and demonstration of a simple canvas effect
+                   dearly named "A thousand stars"
+                    _______________________X
+                   |
+                   |
+                   |  *    *    *    *
+                   |  *   * *  * *  * *
+                   |  *   * *  * *  * *
+                   |  *    *    *    *
+                   |
+                   |
+                   For the star expansion simulation we shall use the same base code as present
+                   in https://sites.google.com/site/keestu/home/just-javascript/tutorial2
+
+                   A simple tube but this time we shall set the following parameters in an object
+                   and also successfully dispose the same namely
+                   a. X and Y coordinates
+                   b. Width of the circle being generated
+                   c. Radius of the circle
+                   
+                   The primary purpose of this simulation is to do the following
+                   a. Verify long/short run memory leakage in a browser
+                   b. Verify if garbage collection actually happens
+                   c. How canvas effects can be intermingled with OOPS concept in Java Script
+                   d. How to dynamically simulate multiple objects
+                   
+                   The reason 1000 stars/objects has been chosen is to the simple fact
+                   of testing and monitoring
+                   a. Heavy rendering
+                   b. Parallel processing and disposition of objects reaching
+                   the maturity/exit stage.
+                   c. GPU/CPU usage during heavy rendering.
+                */
+                var noOfPipes  = 1000;
+
+                var pipeLooper = 0;
+                var randPipe   = 0;
+                var pipeList   = makeArray(noOfPipes);
+
+                while (pipeLooper < noOfPipes) {
+                    pipeList[pipeLooper] = definePipeObject(getRandom(wd),getRandom(ht),getRandom(20),getRandom(10));
+                    pipeLooper           = pipeLooper + 1;
+                    }
+
+                var canvas = document.getElementById("canvas");
+
+                function reset() {
+                    // clear canvas
+                    ctx.clearRect(0,0,wd,ht);
+                    }
+
+                function reDraw() {
+                    ctx.strokeStyle  = colorToHex(getRandom(255),getRandom(255),getRandom(255));
+                    ctx.shadowColor  = colorToHex(getRandom(255),getRandom(255),getRandom(255));
+
+                    /* Pick one random pipe from the pipe list   */
+                    randPipe        = Math.floor(noOfPipes * getRandom(1));
+
+                    if (pipeList[randPipe] != null) {
+                        /* First use the Width for the circular arc  */
+                        ctx.lineWidth   = pipeList[randPipe].width;
+
+                        /* Set the pipe using rest of the parameters */
+                        ctx.beginPath();
+                        ctx.arc(pipeList[randPipe].x, pipeList[randPipe].y, pipeList[randPipe].radius, 0, Math.PI * 2, false);
+                        ctx.closePath();
+
+                        /* Special effects                           */
+                        if (getNegate(2) > 0) {
+                            ctx.globalCompositeOperation = "lighter";
+                            }
+                        else {
+                            ctx.globalCompositeOperation = "xor";
+                            }
+
+                        /* Draw and fill                             */
+                        ctx.stroke();
+                        ctx.fill();
+
+                        /* Update the pipe location                  */
+                        pipeList[randPipe].x      = pipeList[randPipe].x      + (getRandom(0.5) * getNegate(4));
+                        pipeList[randPipe].y      = pipeList[randPipe].y      + (getRandom(0.5) * getNegate(4));
+                        /* Beware Negative Radius = INDEX_SIZE_ERR   */
+                        pipeList[randPipe].radius = pipeList[randPipe].radius + (getRandom(0.5));
+
+                        /* Dispose if out of the screen              */
+                        if (ctx.isPointInPath(0,0) || ctx.isPointInPath(wd,ht)
+                          || ((pipeList[randPipe].x + pipeList[randPipe].radius) > wd)
+                          || ((pipeList[randPipe].x - pipeList[randPipe].radius) < 0)
+                          || ((pipeList[randPipe].y + pipeList[randPipe].radius) > ht)
+                          || ((pipeList[randPipe].y - pipeList[randPipe].radius) < 0)
+                          ) {
+                            pipeList[randPipe].destroy();
+                            pipeList[randPipe] = null;
+                            }
+                        }
+
+                    /* Update the frame location                 */
+                    updateFPS();
+                    }
+
+                /* Functions over. Write code to call above when required */
+                if (canvas.getContext) {
+                    initiateFPS();
+                    var ctx            = canvas.getContext("2d");
+                    ctx.globalAlpha    = 0.2;
+                    ctx.shadowBlur     = 10;
+                    window.canvasTimer = setInterval(reDraw, 0.002);
+                    }
+                else {
+                    printf('<font color = "white"><b id="fps1">No HTML5</b></font>');
+                    }
+                }
+
+            function godsMain() {
+                drawCanvas();
+                alterCanvas();
+                }
+        </script>
+    </head>
+    <body bgcolor = "black">
+        <script>
+            wd = document.body.clientWidth  - 10;
+            if (document.body.clientHeight > document.documentElement.clientHeight) {
+                ht = document.body.clientHeight - 40;
+                }
+            else {
+                ht = document.documentElement.clientHeight - 40;
+                }
+            godsMain();
+        </script>
+    </body>
+</html>
