@@ -1,0 +1,710 @@
+/*
+    HTML5 canvas 3D Particle v2
+    Copyright (C) 2013  Tappali Ekanathan Keestu (keestu@gmail.com)
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>. 
+*/
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+        <title> Particles 2 </title>
+        <script>
+            /*****************************************************/
+            /*           COMMON VARIABLE DECLARATIONS            */
+            /* Width and Height variables of the browser screen  */
+            var wd, ht;
+
+            /* For Frame rate                                    */
+            var lastTime;
+            var frames        = 0;
+            var totalTime     = 0;
+            var updateTime    = 0;
+            var updateFrames  = 0;
+
+            /* Degree to Radians                                 */
+            var degtoRad      = Math.PI/180;
+
+            /* 3D simulation Engine variables                    */
+            /* We are on Earth                                   */
+            var gravity       = 9.8;
+
+            /* Because Javascript is third class in mouse events */
+            var mouseLoc      = defineMouseLocationObject();
+
+            /* Common sense to object disposition only particles */
+            var objListToDispose = new Array();
+
+            /* Need an iterator in many places                   */
+            var looper = 0;
+
+            /*****************************************************/
+
+            /*****************************************************/
+            /*           COMMON FUNCTIONS                        */
+
+            /* Render the text as it is then and there C style   */
+            function printf(text) {
+                document.writeln(text);
+                }
+
+            /* Array creation -> Does not work from Firefox 21   */
+            function makeArray(len) {
+                if (typeof len == "undefined") {
+                    len = 1;
+                    }
+                this.length = len;
+                return this;
+                }
+
+            /* Random number generation with scale toggle        */
+            function getRandom(scale) {
+                return (Math.random() * scale);
+                }
+
+            /* Random toggle with positive and negative outcome  */
+            function getNegate(scale) {
+                if (0 == ((Math.floor(Math.random() * scale))/7)) {
+                    return -1;
+                    }
+                else {
+                    return 1;
+                    }
+                }
+
+            /* RGB to Hex conversion                             */
+            function colorToHex(r,g,b) {
+                var rgb = b | (g << 8) | (r << 16);
+                if (0 == r) {
+                    var rPad = '00';
+                    if (0 == g) {
+                        var gPad = '00';
+                        if (0 == b) {
+                            var bPad = '00';
+                            return '#' + rPad + gPad + +bPad;
+                            }
+                        else {
+                            return '#' + rPad + gPad + rgb.toString(16);
+                            }
+                        }
+                    else {
+                        return '#' + rPad + rgb.toString(16);
+                        }
+                    }
+                return '#' + rgb.toString(16);
+                }
+
+            /* One time initiation of FPS to store initial time  */
+            function initiateFPS() {
+                lastTime = (new Date()).getTime();
+                }
+
+            /* Update the frame rate                             */
+            function updateFPS() {
+                var now = (new Date()).getTime();
+
+                var delta    = now - lastTime;
+                lastTime     = now;
+
+                totalTime    = totalTime  + delta;
+                updateTime   = updateTime + delta;
+
+                frames       = frames       + 1;
+                updateFrames = updateFrames + 1;
+
+                if (1000 < updateTime) {
+                    document.getElementById('fps').innerHTML = "FPS AVG: " + Math.floor(1000*frames/totalTime)
+                      + " CUR: " + Math.floor(1000*updateFrames/updateTime);
+                    updateTime   = 0;
+                    updateFrames = 0;
+                    }
+                }
+
+            /* Update pointer location based on mouse move event */
+            function mouseMove(evt) {
+                evt = (evt) ? evt : (window.event) ? window.event : "";
+                if (evt.pageX) {
+                    if (0 <= evt.pageX) {
+                        mouseLoc.setX(evt.pageX);
+                        }
+                    else {
+                        mouseLoc.setX(0);
+                        }
+                    if (0 <= evt.pageY) {
+                        mouseLoc.setY(evt.pageY);
+                        }
+                    else {
+                        mouseLoc.setY(0);
+                        }
+                    }
+                else {
+                    if (0 <= evt.clientX) {
+                        mouseLoc.setX(evt.clientX);
+                        }
+                    else {
+                        mouseLoc.setX(0);
+                        }
+                    if (0 <= evt.clientY) {
+                        mouseLoc.setY(evt.clientY);
+                        }
+                    else {
+                        mouseLoc.setY(0);
+                        }                        
+                    }
+                }
+
+            /* Dispose off the dangling objects                  */
+            function onExit() {
+                /* RIP Mouse object                              */
+                mouseLoc.destroy();
+
+                /* RIP Objects                                   */
+                looper = 0;
+                while(looper < objListToDispose.length-1) {
+                    objListToDispose[looper].destroy();
+                    looper = looper + 1;
+                    }
+                objListToDispose.length = 0;
+                }
+
+            function onForceClearPartObj(ctx) {
+                /* RIP Objects                                   */
+                looper = 0;
+
+                while(looper < objListToDispose.length-1) {
+                    objListToDispose[looper].destroy();
+                    looper = looper + 1;
+                    }
+                objListToDispose.length = 0;
+
+                /* Clear the Screen                              */
+                ctx.clearRect(0,0,wd,ht);
+
+                /* Reset context items back                      */
+                ctx.globalAlpha              = 1;
+                ctx.shadowBlur               = 0;
+                ctx.shadowColor              = "#000000";
+                ctx.globalCompositeOperation = "source-in";
+
+                document.getElementById("compSelect").selectedIndex = 0;
+
+                /* Clear the interval to prevent caching issues  */
+                window.clearInterval(window.canvasTimer);
+                }
+
+            /*****************************************************/
+
+            /*****************************************************/
+            /*           OBJECT DEFINITIONS                      */
+            /* The main object for mouse event location          */
+            function defineMouseLocationObject() {
+                var globMouseObj = new Object();
+
+                /* Constructor for the global mouse location     */
+                globMouseObj.x = 0;
+                globMouseObj.y = 0;
+
+                /* Getter for X and Y                            */
+                globMouseObj.getX = function() {
+                    return this.x;
+                    };
+
+                globMouseObj.getY = function() {
+                    return this.y;
+                    };
+
+                /* Setter for X and Y                            */
+                globMouseObj.setX = function(x) {
+                    this.x = x;
+                    };
+
+                globMouseObj.setY = function(y) {
+                    this.y = y;
+                    };
+
+                /* Destructor                                    */
+                globMouseObj.destroy = function() {
+                    delete this.x;
+                    delete this.y;
+                    delete this;
+                    };
+
+                return globMouseObj;
+                }
+
+            /* Base environment property for each particle       */
+            function defineEnvironment(g) {
+                var envObj      = new Object();
+
+                /* Constructor for a particular environment      */
+                envObj.gravity = g;
+
+                /* Destructor                                    */
+                envObj.destroy = function() {
+                    delete this.gravity;
+                    delete this;
+                    };
+
+                return envObj;
+                }
+
+            /* The main object for other objects to inherit      */
+            function define3DGlobalObject(x,y,z,secGrav) {
+                var globObj = new Object();
+
+                /* Constructor for a base 3D object              */
+                globObj.x   = x;
+                globObj.y   = y;
+                globObj.z   = z;
+
+                /* Secondary Gravity definition per particle base*/
+                if (typeof secGrav == "undefined") {
+                    globObj.env = defineEnvironment(gravity);
+                    }
+                else {
+                    globObj.env = defineEnvironment(secGrav);
+                    }
+
+                /* Destructor                                    */
+                globObj.destroy = function() {
+                    this.env.destroy();
+                    delete this.x;
+                    delete this.y;
+                    delete this.z;
+                    delete this;
+                    };
+
+                return globObj;
+                }
+
+            /* Define and Render a particle                      */
+            function defineParticle(x,y,z,size,secGrav) {
+                /* X, Y, Z, Size of the particle                 */
+                var partObj     = new Object();
+
+                /* Constructor for the particle object           */
+                if (typeof secGrav == "undefined") {
+                    partObj.basePartObj = define3DGlobalObject(x,y,z);
+                    }
+                else {
+                    partObj.basePartObj = define3DGlobalObject(x,y,z,secGrav);
+                    }
+
+                partObj.size        = size
+                /* Below will not change */
+                partObj.sAngle      = 0;
+                partObj.eAngle      = 2*Math.PI;
+                partObj.rotation    = false;
+
+                /* Assign to the garbage collector object        */
+                objListToDispose[objListToDispose.length] = partObj;
+
+                /* Getter for X Y Z and Gravity                  */
+                partObj.getX = function() {
+                    return this.basePartObj.x;
+                    };
+
+                partObj.getY = function() {
+                    return this.basePartObj.y;
+                    };
+
+                partObj.getZ = function() {
+                    return this.basePartObj.z;
+                    };
+
+                partObj.getSize = function() {
+                    return this.size;
+                    };
+
+                partObj.getGravity = function() {
+                    return this.basePartObj.env.gravity;
+                    };
+
+                /* Only Getters                                  */
+                partObj.getsAngle = function() {
+                    return this.sAngle;
+                    };
+
+                partObj.geteAngle = function() {
+                    return this.eAngle;
+                    };
+
+                partObj.getRotation = function() {
+                    return this.rotation;
+                    };
+
+                /* Setter for X Y Z and Gravity                  */
+                partObj.setX = function(x) {
+                    this.basePartObj.x = x;
+                    };
+
+                partObj.setY = function(y) {
+                    this.basePartObj.y = y;
+                    };
+
+                partObj.setZ = function(z) {
+                    this.basePartObj.z = z;
+                    };
+
+                partObj.setGravity = function(gravity) {
+                    this.basePartObj.env.gravity = gravity;
+                    };
+
+                /* One time draw functionality                   */
+                partObj.draw = function(ctx) {
+                    var tempX, tempY, tempS;
+
+                    /* Clear canvas                              */
+                    function reset() {
+                        ctx.clearRect(0,0,wd,ht);
+                        };
+
+                    /* Calculate 2D X Y based on Z               */
+                    if (2 > this.getZ() || -2 < this.getZ()) {
+                        tempX = this.getX();
+                        tempY = this.getY();
+                        }
+                    else {
+                        tempX = this.getX() - (this.getX()/this.getZ());
+                        tempY = this.getY() - (this.getY()/this.getZ());
+                        }
+
+                    /*
+                    For Flat circular object -> Angular diameter = 2 * arctan(d/2D)
+                    For Spherical object     -> Angular diameter = 2 * arcsin(d/2D)
+                    For astronomically far   -> Angular diameter = d/D
+                    d -> diameter of the object
+                    D -> distance of the eye from the object
+                                                         /|\
+                                                        / | \
+                    :-) ---------------D---------------   d  |
+                                                        \ | /
+                                                         \|/
+                    Modify Size/Angular diameter based on 'Z' and 'original size'
+                    */
+
+                    if (0 == this.getZ()) {
+                        tempS = this.getSize();
+                        }
+                    else if (0 < this.getZ()){
+                        tempS = 2 * Math.atan(this.getSize()/(2*this.getZ()));
+                        }
+                    else {
+                        tempS = -1 * (this.getSize() * this.getZ());
+                        }
+
+                    /* Assign the new X and Y position           */
+                    this.setX(tempX);
+                    this.setY(tempY);
+
+                    /* Render the particle                       */
+                    ctx.strokeStyle = colorToHex(0,0,0);
+                    ctx.fillStyle   = colorToHex(0,0,0);
+
+                    ctx.beginPath();
+                    ctx.arc(this.getX(),this.getY(),tempS,this.getsAngle(),this.geteAngle(),this.getRotation());
+                    ctx.closePath();
+
+                    ctx.stroke();
+                    ctx.fill();
+                    };
+
+                /* Re draw functionality                         */
+                partObj.reDraw = function(ctx,mx,my,mz) {
+                    var tempX, tempY, tempS;
+
+                    /* Clear canvas                              */
+                    function reset() {
+                        ctx.clearRect(0,0,wd,ht);
+                        };
+
+                    if (typeof mz != "undefined") {
+                        this.setZ(mz);
+                        }
+
+                    /* Calculate 2D X Y based on Z               */
+                    if (2 > this.getZ() || -2 < this.getZ()) {
+                        tempX = mx;
+                        tempY = my;
+                        }
+                    else {
+                        tempX = mx - (mx/this.getZ());
+                        tempY = my - (my/this.getZ());
+                        }
+
+                    /* Modify Size/Angular diameter based on 'Z' and 'original size' */
+                    if (0 == this.getZ()) {
+                        tempS = this.getSize();
+                        }
+                    else if (0 < this.getZ()){
+                        tempS = 2*Math.atan(this.getSize()/(2*this.getZ()));
+                        }
+                    else {
+                        tempS = -1*(this.getSize()*this.getZ());
+                        }
+
+                    /* Assign the new X and Y position           */
+                    this.setX(tempX);
+                    this.setY(tempY);
+
+                    /* Special effects                           */
+                    if (getNegate(10) > 0.5) {
+                        ctx.strokeStyle = colorToHex(getRandom(255),getRandom(255),getRandom(255));
+                        }
+                    if (getNegate(10) > 0.5) {
+                        ctx.fillStyle   = colorToHex(getRandom(255),getRandom(255),getRandom(255));
+                        }
+
+                    /*document.getElementById('fps').innerHTML = "X: " + Math.floor(this.getX()) + " Y:" + Math.floor(this.getY()) + " Z:" + Math.floor(this.getZ()) + " Size:" + Math.floor(this.getSize()) + " MouseX:" + Math.floor(mx) + " MouseY:" + Math.floor(my);*/
+
+                    /* Render the particle                       */
+                    ctx.beginPath();
+                    ctx.arc(this.getX(),this.getY(),tempS,this.getsAngle(),this.geteAngle(),this.getRotation());
+                    ctx.closePath();
+
+                    ctx.stroke();
+                    ctx.fill();
+                    };
+
+                /* Destructor                                    */
+                partObj.destroy = function() {
+                    this.basePartObj.destroy();
+                    delete this.size;
+                    delete this.sAngle;
+                    delete this.eAngle;
+                    delete this.rotation;
+                    delete this;
+                    };
+
+                return partObj;
+                }
+            /*****************************************************/
+
+            /*****************************************************/
+            /*           MULTI PARTICLE GENERATOR                */
+            function partGen(ctx) {
+                looper = 0;
+
+                var numOfPart                = document.getElementById("numOfPart").value;
+                var variateFromCentre        = document.getElementById("variateFromCentre").value;
+                var variateZ                 = document.getElementById("variateZ").value;
+                ctx.globalCompositeOperation = document.getElementById("compSelect").value;
+
+                if (document.getElementById("specialEffects").checked) {
+                    ctx.globalAlpha    = 0.5;
+                    ctx.shadowColor    = "#FEFCD7";
+                    ctx.shadowBlur     = 10;
+                    }
+                else {
+                    ctx.globalAlpha    = 1;
+                    ctx.shadowBlur     = 0;
+                    ctx.shadowColor    = "#000000";
+                    }
+
+                /* Only Numbers else assign defaults             */
+                if (isNaN(numOfPart)) {
+                    numOfPart = 10;
+                    }
+                if (isNaN(variateFromCentre) || variateFromCentre == 0) {
+                    variateFromCentre = 1;
+                    }
+                if (isNaN(variateZ)) {
+                    variateZ = 100;
+                    }
+
+                /* Only positive values                          */
+                if (variateFromCentre < 0) {
+                    variateFromCentre = variateFromCentre * -1;
+                    }
+                if (numOfPart < 0) {
+                    numOfPart = numOfPart * -1;
+                    }
+                if (variateZ < 0) {
+                    variateZ = variateZ * -1;
+                    }
+
+                /* Create the particles                          */
+                while (looper < numOfPart) {
+                    var tempPart = defineParticle(getRandom(wd),getRandom(ht),getRandom(variateZ),getRandom(50));
+                    tempPart.draw(ctx);
+                    looper = looper + 1;
+                    }
+
+                /* Generate X                                    */
+                function genX(x,variateFromCentre) {
+                    var tempX  = 0;
+
+                    if (x < mouseLoc.getX()) {
+                        if (0 != mouseLoc.getX()) {
+                            if (0 == x) {
+                                tempX = mouseLoc.getX();
+                                }
+                            else {
+                                tempX = x;
+                                }
+                            tempX = tempX + variateFromCentre * (tempX/mouseLoc.getX());
+                            }
+                        else {
+                            tempX = 2 * x;
+                            }
+                        }
+                    else {
+                        tempX = x - variateFromCentre * (mouseLoc.getX()/x);
+                        if (tempX < 0) {
+                            tempX = 0;
+                            }
+                        }
+                    return tempX;
+                    };
+
+                /* Generate Y                                    */
+                function genY(y,variateFromCentre) {
+                    var tempY  = 0;
+
+                    if (y < mouseLoc.getY()) {
+                        if (0 != mouseLoc.getY()) {
+                            if (0 == y) {
+                                tempY = mouseLoc.getY();
+                                }
+                            else {
+                                tempY = y;
+                                }
+                            tempY = tempY + variateFromCentre * (tempY/mouseLoc.getY());
+                            }
+                        else {
+                            tempY = 2 * y;
+                            }                            
+                        }
+                    else {
+                        tempY = y - variateFromCentre * (mouseLoc.getY()/y);
+                        if (tempY < 0) {
+                            tempY = 0;
+                            }
+                        }
+                    return tempY;
+                    };
+
+                /* Generate Z                                    */
+                function genZ(z,variateFromCentre) {
+                    var tempZ  = 0;
+
+                    if (z > 0.455) {
+                        z = z * -1;
+                        }
+
+                    tempZ = Math.sin(z+(variateFromCentre*degtoRad));
+                    return tempZ;
+                    };
+
+                /* Render the particles                          */
+                function renderParticles() {
+                    looper = 0;
+
+                    while(looper < objListToDispose.length) {
+                        /* Dispose list has the 3D objects       */
+                        objListToDispose[looper].reDraw(ctx,genX(objListToDispose[looper].getX(),variateFromCentre),genY(objListToDispose[looper].getY(),variateFromCentre),genZ(objListToDispose[looper].getZ(),variateFromCentre));
+                        looper = looper + 1;
+                        }
+
+                    /* Update the frame location                 */
+                    updateFPS();
+                    };
+
+                window.canvasTimer = setInterval(renderParticles, 0.005);
+                }
+            /*****************************************************/
+
+            /*****************************************************/
+            /*    CANVAS DEFINITION, OPTIONS, FPS AND RENDER     */
+            function drawCanvas () {
+                printf('<canvas id="canvas" width="'+wd+'" height="'+ht+'"></canvas>');
+                }
+
+            function drawOptions() {
+                printf('<button id="clear" type="button" >Clear Particles</button>');
+                printf('<font color = "white">Number of Particles</font><input id = "numOfPart" type="text" value="10" style="width:50px;"/>');
+                printf('<font color = "white">Variate from center</font><input id = "variateFromCentre" type="text" value="1" style="width:50px;"/>');
+                printf('<font color = "white">Depth Variance</font><input id = "variateZ" type="text" value="50" style="width:50px;"/>');
+                printf('<font color = "white">Special Effects</font><input id = "specialEffects" type="checkbox"/>');
+                printf('<select id = "compSelect" style="width:120px;">');
+                printf('<option value="source-over">Towards you</option>');
+                printf('<option value="destination-over">Moving away</option>');
+                printf('<option value="lighter">Wierd Glow</option>');
+                printf('<option value="xor">Ugly</option>');
+                /* Not usefull
+                <option value="source-atop">source-atop</option>
+                <option value="source-in">source-in</option>
+                <option value="source-out">source-out</option>
+                <option value="destination-atop">destination-atop</option>
+                <option value="destination-in">destination-in</option>
+                <option value="destination-out">destination-out</option>
+                <option value="copy">copy</option>
+                */
+                printf('</select>');
+                }
+
+            function drawFPS() {
+                printf('<font color = "white"><b id="fps"></b></font>');
+                }
+
+            function alterCanvas() {
+                var canvas    = document.getElementById("canvas");
+
+                /* If context is available then render           */
+                if (canvas.getContext) {
+                    initiateFPS();
+                    var ctx            = canvas.getContext("2d");
+                    canvas.onclick     = function() {partGen(ctx);}
+                    document.getElementById('clear').onclick=function() {onForceClearPartObj(ctx)};
+                    }
+                else {
+                    printf('<font color = "white"><b id="nohtml">No HTML5</b></font>');
+                    }
+                }
+
+            /*****************************************************/
+            /*                       MAIN                        */
+            function godsMain() {
+                /* Initiate mouse object                         */
+                document.onmousemove = mouseMove;
+
+                /* Draw the canvas                               */
+                drawCanvas();
+                /* Draw the options                              */
+                drawOptions();
+                /* Draw the fps                                  */
+                drawFPS();
+
+                /* Render the canvas                             */                
+                alterCanvas();
+
+                /* Help the browser Garbage collect              */
+                window.onbeforeunload = onExit;
+                }
+            /*****************************************************/
+        </script>
+    </head>
+    <body bgcolor = "black">
+        <script>
+            /* Calculate Width and Height before rendering       */
+            wd = document.body.clientWidth  - 10;
+            if (document.body.clientHeight > document.documentElement.clientHeight) {
+                ht = document.body.clientHeight - 40;
+                }
+            else {
+                ht = document.documentElement.clientHeight - 40;
+                }
+            godsMain();
+        </script>
+    </body>
+</html>
