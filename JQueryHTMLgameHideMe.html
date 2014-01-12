@@ -1,0 +1,228 @@
+/*
+    JQuery HTML game Hide Me
+    Copyright (C) 2013  Tappali Ekanathan Keestu (keestu@gmail.com)
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>. 
+*/
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+        <title> Hide me </title>
+
+        <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
+        <script>
+            /*****************************************************/
+            /*           COMMON VARIABLE DECLARATIONS            */
+
+            var noOfClicks = 0;
+
+            /*****************************************************/
+
+            /*****************************************************/
+            /*           COMMON FUNCTIONS                        */
+
+            /* Render the text as it is then and there C style   */
+            function printf(text) {
+                document.writeln(text);
+                }
+
+            /* Random number generation with scale toggle        */
+            function getRandom(scale) {
+                return (Math.random() * scale);
+                }
+
+            /*****************************************************/
+
+            /*****************************************************/
+            /*               OPTION AND GENERATOR                */
+
+            function drawGenOpts() {
+                printf('<button id="generate" type="button" >Generate</button>');
+                printf('<select id = "levelSelect" style="width:120px;">');
+                printf('<option value="baby">Baby</option>');
+                printf('<option value="beginner">Beginner</option>');
+                printf('<option value="intermediate">Intermediate</option>');
+                printf('<option value="expert">Expert</option>');
+                printf('</select>');
+                printf('<font id = "initMessage" color = "white"></font>');
+                printf('<font color = "white">No of clicks:<b id="clicks"></b></font>');
+
+                document.getElementById('generate').onclick = function() {generateGrid(document.getElementById("levelSelect").value)};
+                }
+
+            function drawMainGrid() {
+                printf('<div id = "mainGrid"></div>');
+                }
+
+            /*****************************************************/
+
+            /*****************************************************/
+            /*               GRID FILLER                         */
+            /*Sample pattern
+            <div id = "mainGrid">
+                <table>
+                    <tr>
+                        <td>
+                            <div id = "flip0">Check</div>
+                        </td>
+                        <td>
+                            <div id = "flip1">Check 1</div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <div id = "flip2">Check 2</div>
+                        </td>
+                        <td>
+                            <div id = "flip3">Check 3</div>
+                        </td>
+                    </tr>
+                </table>
+            </div>*/
+
+            function fillGrid(grdX,grdY) {
+                var filler         = '';
+                var flipID         = 0;
+                var localCntX;
+                var localCntY      = 0;
+                var actFlipID      = 0;
+
+                /* Classic Bubble draw                           */
+                filler = filler + '<table>';
+
+                while (localCntY < grdY) {
+                    localCntX = 0;
+                    filler = filler + '<tr>';
+
+                    while (localCntX < grdX) {
+                        filler = filler + '<td>';
+                        filler = filler + '<div id = "flip' + flipID + '"><img src="./smily/smily.png" style="margin:0px auto"></img></div>';
+                        filler = filler + '</td>';
+
+                        localCntX = localCntX + 1;
+                        flipID    = flipID    + 1;
+                        }
+ 
+                    filler = filler + '</tr>';
+                    localCntY = localCntY + 1;
+                    }
+
+                filler = filler + '</table>';
+
+                /* Plugin the grid to display                    */
+                document.getElementById('mainGrid').innerHTML = filler;
+
+                /* Apply the styles to the grids                 */
+                while(flipID >= 0) {
+                    actFlipID = '#flip' + flipID;
+                    $(actFlipID).css({"padding":"5px","text-align":"center","margin":"0 auto","justify-content":"center"});
+                    flipID = flipID - 1;
+                    }
+                }
+
+            /*****************************************************/
+            /*               GAME ENGINE                         */
+
+            function gameEngine(flipLimit) {
+                var looper = 0;
+                var flipID, randFlipID;
+
+                (function($) {
+                    jQuery.fn.assignFlipClick = function() {
+                        return this.each(function() {
+                            var $this = $(this);
+                            $this.click(function(event) {
+                                event.preventDefault();
+
+                                /* Assign the random flip ID     */
+                                randFlipID = '#flip' + Math.floor(getRandom(flipLimit));
+                                $(randFlipID).slideToggle("slow");
+
+                                /* update the click count        */
+                                noOfClicks = noOfClicks + 1;
+                                document.getElementById('clicks').innerHTML = noOfClicks;
+                                });
+                            });
+                        };
+                    })(jQuery);
+
+                $(document).ready(function() {
+                    while (looper < flipLimit) {
+                        flipID = '#flip' + looper;
+                        $(flipID).assignFlipClick();
+                        looper = looper + 1;
+                        }
+                    });
+                }
+
+            /*****************************************************/
+            /*               GRID GENERATOR                      */
+
+            function generateGrid(level) {
+                /* Grid X and Y count                            */
+                var grdX, grdY;
+
+                /* Clear the main grid contents                  */
+                document.getElementById('mainGrid').innerHTML    = "";
+                document.getElementById('clicks').innerHTML      = "";
+                document.getElementById('initMessage').innerHTML = "";
+                noOfClicks = 0;
+
+                if (level == "baby") {
+                    grdX = 2;
+                    grdY = 2;
+                    document.getElementById('initMessage').innerHTML = "GOO GOO GAA GAA I am a cry baby.";
+                    }
+                if (level == "beginner") {
+                    grdX = 3;
+                    grdY = 3;
+                    document.getElementById('initMessage').innerHTML = "You just grew up?";
+                    }
+                if (level == "intermediate") {
+                    grdX = 5;
+                    grdY = 6;
+                    document.getElementById('initMessage').innerHTML = "Now we are talking probability.";
+                    }
+                if (level == "expert") {
+                    grdX = 10;
+                    grdY = 8;
+                    document.getElementById('initMessage').innerHTML = "Clickomaniac...Let's show probability who's boss.";
+                    }
+
+                /* Create the Grid                               */
+                fillGrid(grdX,grdY);
+
+                /* Create the game engine                        */
+                gameEngine(grdX * grdY);
+                }
+
+            /*****************************************************/
+
+            /*****************************************************/
+            /*                       MAIN                        */
+            function godsMain() {
+                /* Draw the options and generate button          */
+                drawGenOpts();
+                /* Draw the main grid                            */
+                drawMainGrid();
+                }
+            /*****************************************************/
+        </script>
+    </head>
+    <body bgcolor = "black">
+        <script>
+            godsMain();
+        </script>
+    </body>
+</html>
