@@ -1,0 +1,122 @@
+/*
+    HTML5 canvas 3D cube simulation
+    Copyright (C) 2012  Tappali Ekanathan Keestu (keestu@gmail.com)
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+<!DOCTYPE>
+<html>
+    <head>
+        <title> Canvas </title>
+        <script>
+            var wd, ht;
+            /* For Frame rate */
+            var lastTime;
+            var frames        = 0;
+            var totalTime     = 0;
+            var updateTime    = 0;
+            var updateFrames  = 0;
+            function printf(text) {
+                document.writeln(text);
+                }
+
+            function initiateFPS() {
+                /* For Frame rate - store initial time */
+                lastTime = (new Date()).getTime();
+                }
+
+            function updateFPS() {
+                /* update Frame rate */
+                var now = (new Date()).getTime();
+
+                var delta    = now - lastTime;
+                lastTime     = now;
+                totalTime    = totalTime    + delta;
+                updateTime   = updateTime   + delta;
+
+                frames       = frames       + 1;
+                updateFrames = updateFrames + 1;
+
+                if(1000 < updateTime) {
+                    document.getElementById('fps').innerHTML = "FPS AVG: " + Math.floor(1000*frames/totalTime) + " CUR: " + Math.floor(1000*updateFrames/updateTime);
+                    updateTime   = 0;
+                    updateFrames = 0;
+                    }
+                }
+
+            function drawCanvas () {
+                printf('<canvas id="canvas" width="'+wd+'" height="'+ht+'"></canvas>');
+                printf('<font color = "white"><b id="fps"></b></font>');
+                }
+
+            function alterCanvas() {
+                var canvas = document.getElementById("canvas");
+
+                /* Declare all the functions first */
+                function reset() {
+                    ctx.clearRect(0,0,wd,ht); // clear canvas
+                    }
+
+                function draw() {
+                    var grd = ctx.createLinearGradient(0,300,300,0);
+                    grd.addColorStop(0.8,"black");
+                    grd.addColorStop(0.99,"red");
+                    ctx.fillStyle   = grd;
+                    ctx.fillRect(100,100,300,300);
+                    }
+                    
+                function reDraw() {
+                    if (!ctx.isPointInPath(300,300) && ctx.globalAlpha < 0.99) {
+                        //reset();
+                        ctx.globalAlpha = ctx.globalAlpha + 0.009;
+                        /* scaleX, skewX, skewY, scaleY, TranslateX, TranslateY */
+                        ctx.transform(1,0,0,1,1,1);
+                        ctx.fillRect(100,100,300,300);
+                        updateFPS();
+                        }
+                    }
+
+                /* Functions over. Write code to call above when required */
+                if (canvas.getContext) {
+                    var ctx = canvas.getContext("2d");
+                    ctx.shadowColor = "white";
+                    ctx.shadowBlur  = 5;
+                    ctx.globalAlpha = 0;
+                    draw();
+                    initiateFPS();
+                    window.canvasTimer = setInterval(reDraw, 10);
+                    }
+                else {
+                    printf('<font color = "white"><b id="fps1">No HTML5</b></font>');
+                    }
+                }
+
+            function godsMain() {
+                drawCanvas();
+                alterCanvas();
+                }
+        </script>
+    </head>
+    <body bgcolor = "black">
+        <script>
+            wd = document.body.clientWidth  - 10;
+            if (document.body.clientHeight > document.documentElement.clientHeight) {
+                ht = document.body.clientHeight - 40;
+                }
+            else {
+                ht = document.documentElement.clientHeight - 40;
+                }
+            godsMain();
+        </script>
+    </body>
+</html>
