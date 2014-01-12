@@ -1,0 +1,355 @@
+/*
+    HTML5 canvas 2D Human walk simulation
+    Copyright (C) 2012  Tappali Ekanathan Keestu (keestu@gmail.com)
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+<!DOCTYPE>
+<html>
+    <head>
+        <title> Human walk </title>
+        <script>
+            var wd, ht;
+
+            /* For Frame rate */
+            var lastTime;
+            var frames        = 0;
+            var totalTime     = 0;
+            var updateTime    = 0;
+            var updateFrames  = 0;
+
+            function printf(text) {
+                document.writeln(text);
+                }
+
+            function get_random(scale) {
+                return (Math.random() * scale);
+                }
+
+            function get_negate(scale) {
+                if (0 == ((Math.floor(Math.random() * scale))/7)) {
+                    return -1;
+                    }
+                else {
+                    return 1;
+                    }
+                }
+
+            function colorToHex (r,g,b) {
+                var rgb = b | (g << 8) | (r << 16);
+                if (0 == r) {
+                    var rPad = '00';
+                    if (0 == g) {
+                        var gPad = '00';
+                        if (0 == b) {
+                            var bPad = '00';
+                            return '#' + rPad + gPad + +bPad;
+                            }
+                        else {
+                            return '#' + rPad + gPad + rgb.toString(16);
+                            }
+                        }
+                    else {
+                        return '#' + rPad + rgb.toString(16);
+                        }
+                    }
+                return '#' + rgb.toString(16);
+                }
+
+            function initiateFPS() {
+                /* For Frame rate - store initial time */
+                lastTime = (new Date()).getTime();
+                }
+
+            function updateFPS() {
+                /* update Frame rate */
+                var now = (new Date()).getTime();
+
+                var delta    = now - lastTime;
+                lastTime     = now;
+
+                totalTime    = totalTime  + delta;
+                updateTime   = updateTime + delta;
+
+                frames       = frames       + 1;
+                updateFrames = updateFrames + 1;
+
+                if (1000 < updateTime) {
+                    document.getElementById('fps').innerHTML = "FPS AVG: " + Math.floor(1000*frames/totalTime) + " CUR: " + Math.floor(1000*updateFrames/updateTime);
+                    updateTime   = 0;
+                    updateFrames = 0;
+                    }
+                }
+
+            function drawCanvas () {
+                printf('<canvas id="canvas" width="'+wd+'" height="'+ht+'"></canvas>');
+                printf('<font color = "white"><b id="fps"></b></font>');
+                }
+
+            function alterCanvas () {
+                /* Walk 2D simulation
+                   __________________________ X
+                  |        
+                  |       \ \\ \
+                  |        \ \\ \
+                  |         \ \\ \
+                  |       * / / / /
+                  |        / / / /
+                  |       | |_ | | **
+                  |       |___\|/  ***
+                  |
+                  Y
+                  The first task to automate is to consider the length of the leg.
+                  Considering my own leg and some rough calculations I have assumed
+                  Lets say a stretched leg is legLen units.
+
+                  Ankle to Tip of the leg is (26% * legLen)
+                  Lower leg is               (40% * legLen)
+                  Thigh is                   (34% * legLen)
+
+                  To walk there are two joints to be considered
+                  (in the above representation * and **) Assume they are Theta1 and Theta2
+                  *** - base bone of the leg
+                  Again based on my calculation of how to walk the variation would be as
+
+                  Theta1 - 045 - 090 - 045 degree *
+                  Theta2 - 090 - 180 - 090 degree **
+                  Theta3 - 180 - 090 - 180 degree ***
+
+                  (The above is assuming your protractor is angled along Y base)
+
+                  a. Now there is though a timing change of when Theta2 i.e. the tap before the
+                     next support leg starts sliding.
+                  b. The offset points from the base start point.
+                  c. The leg points to stroke from in the respective theta1 along with the x and y
+                     stroke.
+                */
+                var canvas         = document.getElementById("canvas");
+                var baseLegX       = 250;
+                var baseLegY       = 250;
+                var lenLeg         = 250;
+
+                /* Degree to Radians */
+                var degtoRad       = Math.PI/180;
+
+                /* Leg division percentage Fixed */
+                var lenbottomToTip = (0.20) * lenLeg;
+                var lenAnkTobottom = (0.06) * lenLeg;
+                var lenLowLeg      = (0.40) * lenLeg;
+                var lenThigh       = (0.34) * lenLeg;
+
+                /* Base Hip Bone variant */
+                var theta0         = 0;
+                var baseHipTiltRad = 5;
+
+                /* Thigh angle Fixed */
+                var theta1LimitMin = 45;
+                var theta1LimitMax = 90;
+
+                /* Knee angle Fixed  */
+                var theta2LimitMin = 90;
+                var theta2LimitMax = 180;
+                var theta2Inc      = (theta2LimitMax-theta2LimitMin)/(theta1LimitMax-theta1LimitMin);
+
+                /* Ankle angle Fixed */
+                var theta3LimitMin = 90;
+                var theta3LimitMax = 180;
+
+                /* Left Leg Initial Position, Theta and variants */
+                var baseLeftLegX     = baseLegX;
+                var baseLeftLegY     = baseLegY;
+                var theta1LL         = theta1LimitMax;
+                var theta1SwitchLL   = -1;
+                var theta2LL         = theta2LimitMax;
+                var theta2SwitchLL   = -1;
+                var theta3VariantLL  = 15;
+
+                /* Right Leg Initial Position, Theta and variants */
+                var baseRightLegX    = baseLegX;
+                var baseRightLegY    = baseLegY;
+                var theta1RL         = theta1LimitMin;
+                var theta1SwitchRL   = 1;
+                var theta2RL         = theta2LimitMin;
+                var theta2SwitchRL   = 1;
+                var theta3VariantRL  = 15;
+
+                function reset() {
+                    // clear canvas
+                    ctx.clearRect(0,0,wd,ht);
+                    }
+
+                function drawWalk(baseX,baseY,thetaOne,thetaTwo,thetaThreeVariant) {
+                    ctx.beginPath();
+                    /* Draw the Thigh             */
+                    ctx.moveTo(baseX,baseY);
+                    var baseKneeX   = baseX + (Math.cos(thetaOne*degtoRad) * lenThigh);
+                    var baseKneeY   = baseY + (Math.sin(thetaOne*degtoRad) * lenThigh);
+                    ctx.lineTo(baseKneeX,baseKneeY);
+
+                    /* Draw the knee bone to ankle  */
+                    var theta2Bottom = thetaTwo - (90 - thetaOne);
+                    var baseAnkleX   = baseX;
+                    var baseAnkleY   = baseKneeY + (Math.sin(theta2Bottom*degtoRad) * lenLowLeg);
+                    ctx.lineTo(baseAnkleX,baseAnkleY);
+
+                    /* Draw ankle to toe bottom   */
+                    var theta2ankle = 90-theta2Bottom;
+                    var baseToeX    = baseAnkleX + (Math.sin(theta2ankle*degtoRad) * lenAnkTobottom);
+                    var baseToeY    = baseAnkleY + (Math.cos(theta2ankle*degtoRad) * lenAnkTobottom);
+                    ctx.lineTo(baseToeX,baseToeY);
+
+                    /* Draw toe bottom to toe tip */
+                    var lenTipToeAngled = Math.sqrt(Math.pow(lenAnkTobottom,2) + Math.pow(lenbottomToTip,2));
+                    var ankleAngle      = 180 - (theta3LimitMin + thetaThreeVariant - theta2ankle);
+                    var tipToeX         = baseAnkleX + (Math.sin(ankleAngle*degtoRad) * lenTipToeAngled);
+                    var tipToeY         = baseAnkleY + (Math.cos(ankleAngle*degtoRad) * lenTipToeAngled);
+                    ctx.lineTo(tipToeX,tipToeY);
+
+                    /* Leg tilt to toe */
+                    ctx.moveTo(baseAnkleX,baseAnkleY);
+                    ctx.lineTo(tipToeX,tipToeY);
+                    ctx.stroke();
+
+                    ctx.closePath();
+                    }
+
+                function doWalk() {
+                    /* Left Leg Theta 1 and Theta 3 variations */
+                    if (Math.floor(theta1LL) >= theta1LimitMin && Math.floor(theta1LL) <= theta1LimitMax) {
+                        if (theta1LL == theta1LimitMin) {
+                            theta1SwitchLL  = 1;
+                            }
+                        if (theta1LL == theta1LimitMax) {
+                            theta1SwitchLL  = -1;
+                            theta3VariantLL = 15;
+                            }
+                        theta1LL = theta1LL + theta1SwitchLL;
+
+                        /* Ankle switch */
+                        if (theta1LL <= 67 && theta1SwitchLL == -1) {
+                            theta3VariantLL     = theta3VariantLL + 1.00;
+                            }
+                        if (theta1SwitchLL == 1) {
+                            /* To make things smooth when there is a tap at the end of the walk */
+                            if (theta1LL >= 79) {
+                                theta3VariantLL = theta3VariantLL + 0.60;
+                                }
+                            else if (theta1LL >= 57) {
+                                theta3VariantLL = theta3VariantLL - 1.45;
+                                }
+                            }
+                        }
+
+                    /* Left Leg Theta 2 variations */
+                    if (Math.floor(theta2LL) >= theta2LimitMin && Math.floor(theta2LL) <= theta2LimitMax) {
+                        theta2LL = theta2LL + theta2SwitchLL;
+                        if (theta2LL == theta2LimitMin) {
+                            theta2SwitchLL = theta2Inc;
+                            }
+                        if (theta2LL == theta2LimitMax) {
+                            theta2SwitchLL = -1 * theta2Inc;
+                            }
+                        }
+
+                    /* Right Leg Theta 1 and Theta 3 variations */
+                    if (Math.floor(theta1RL) >= theta1LimitMin && Math.floor(theta1RL) <= theta1LimitMax) {
+                        if (theta1RL == theta1LimitMin) {
+                            theta1SwitchRL  = 1;
+                            }
+                        if (theta1RL == theta1LimitMax) {
+                            theta1SwitchRL  = -1;
+                            theta3VariantRL = 15;
+                            }
+                        theta1RL = theta1RL + theta1SwitchRL;
+
+                        /* Ankle switch */
+                        if (theta1RL <= 67 && theta1SwitchRL == -1) {
+                            theta3VariantRL     = theta3VariantRL + 1.00;
+                            }
+                        if (theta1SwitchRL == 1) {
+                            /* To make things smooth when there is a tap at the end of the walk */
+                            if (theta1RL >= 79) {
+                                theta3VariantRL = theta3VariantRL + 0.60;
+                                }
+                            else if (theta1RL >= 57) {
+                                theta3VariantRL = theta3VariantRL - 1.45;
+                                }
+                            }
+                        }
+
+                    /* Right Leg Theta 2 variations */
+                    if (Math.floor(theta2RL) >= theta2LimitMin && Math.floor(theta2RL) <= theta2LimitMax) {
+                        theta2RL = theta2RL + theta2SwitchRL;
+                        if (theta2RL == theta2LimitMin) {
+                            theta2SwitchRL = theta2Inc;
+                            }
+                        if (theta2RL == theta2LimitMax) {
+                            theta2SwitchRL = -1 * theta2Inc;
+                            }
+                        }
+
+                    /* Special effects */
+                    if (get_negate(10) > 0.5) {
+                        ctx.strokeStyle = colorToHex(get_random(255),get_random(255),get_random(255));
+                        reset();
+                        }
+
+                    baseLeftLegX   = baseLegX + baseHipTiltRad * Math.cos(theta0*degtoRad);
+                    baseLeftLegY   = baseLegY + baseHipTiltRad * Math.sin(theta0*degtoRad);
+                    drawWalk(baseLeftLegX,baseLeftLegY,theta1LL,theta2LL,theta3VariantLL);
+
+                    baseRightLegX  = baseLegX + baseHipTiltRad * Math.cos(theta0*degtoRad+1);
+                    baseRightLegY  = baseLegY + baseHipTiltRad * Math.sin(theta0*degtoRad+1);
+                    drawWalk(baseRightLegX,baseRightLegY,theta1RL,theta2RL,theta3VariantRL);
+
+                    if (baseLegX < 0.8*wd) {
+                        baseLegX = baseLegX + 1;
+                        }
+
+                    theta0 = theta0 + 5;
+                    updateFPS();
+                    }
+
+                /* Functions over. Write code to call above when required */
+                if (canvas.getContext) {
+                    var ctx         = canvas.getContext("2d");
+                    ctx.shadowColor = "#FEFCD7";
+                    ctx.shadowBlur  = 20;
+                    ctx.lineWidth   = 4;
+                    initiateFPS();
+                    window.canvasTimer = setInterval(doWalk, 30);
+                    }
+                else {
+                    printf('<font color = "white"><b id="fps1">No HTML5</b></font>');
+                    }
+                }
+
+            function GODSMain() {
+                drawCanvas();
+                alterCanvas();
+                }
+        </script>
+    </head>
+    <body bgcolor = "black">
+        <script>
+            wd = document.body.clientWidth  - 10;
+            if (document.body.clientHeight > document.documentElement.clientHeight) {
+                ht = document.body.clientHeight - 40;
+                }
+            else {
+                ht = document.documentElement.clientHeight - 40;
+                }
+            GODSMain();
+        </script>
+    </body>
+</html>
