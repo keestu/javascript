@@ -1,0 +1,191 @@
+/*
+    HTML5 canvas 3D domino effect simulation
+    Copyright (C) 2012  Tappali Ekanathan Keestu (keestu@gmail.com)
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+<!DOCTYPE>
+<html>
+    <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+        <title> Dominos </title>
+        <script>
+            var wd, ht;
+
+            /* For Frame rate */
+            var lastTime;
+            var frames        = 0;
+            var totalTime     = 0;
+            var updateTime    = 0;
+            var updateFrames  = 0;
+
+            /* Y location of the canvas context           */
+            var ctxYLoc       = 0;
+            /* Based on my thought of the domino box size */
+            var sqBoxSize     = 30;
+
+            function printf(text) {
+                document.writeln(text);
+                }
+
+            function get_random(scale) {
+                return (Math.random() * scale);
+                }
+
+            function get_negate(scale) {
+                if (0 == ((Math.floor(Math.random() * scale))/7)) {
+                    return -1;
+                    }
+                else {
+                    return 1;
+                    }
+                }
+
+            function colorToHex (r,g,b) {
+                var rgb = b | (g << 8) | (r << 16);
+                if (0 == r) {
+                    var rPad = '00';
+                    if (0 == g) {
+                        var gPad = '00';
+                        if (0 == b) {
+                            var bPad = '00';
+                            return '#' + rPad + gPad + +bPad;
+                            }
+                        else {
+                            return '#' + rPad + gPad + rgb.toString(16);
+                            }
+                        }
+                    else {
+                        return '#' + rPad + rgb.toString(16);
+                        }
+                    }
+                return '#' + rgb.toString(16);
+                }
+
+            function initiateFPS() {
+                /* For Frame rate - store initial time */
+                lastTime = (new Date()).getTime();
+                }
+
+            function updateFPS() {
+                /* update Frame rate */
+                var now = (new Date()).getTime();
+
+                var delta    = now - lastTime;
+                lastTime     = now;
+
+                totalTime    = totalTime + delta;
+                updateTime   = updateTime + delta;
+
+                frames       = frames + 1;
+                updateFrames = updateFrames + 1;
+
+                if (1000 < updateTime) {
+                    document.getElementById('fps').innerHTML = "FPS AVG: " + Math.floor(1000*frames/totalTime) + " CUR: " + Math.floor(1000*updateFrames/updateTime);
+                    updateTime   = 0;
+                    updateFrames = 0;
+                    }
+                }
+
+            function drawCanvas () {
+                printf('<canvas id="canvas" width="'+wd+'" height="'+ht+'"></canvas>');
+                printf('<font color = "white"><b id="fps"></b></font>');
+                }
+
+            function alterCanvas() {
+                var canvas = document.getElementById("canvas");
+
+                /* Declare all the functions first */
+                function reset() {
+                    ctx.clearRect(0,0,wd,ht); // clear canvas
+                    }
+
+                function draw() {
+                    var rectLoc = 0;
+
+                    while (rectLoc < wd) {
+                        ctx.fillRect(rectLoc,0,sqBoxSize,sqBoxSize);
+                        rectLoc = rectLoc + sqBoxSize;
+                        }
+                    }
+                    
+                function reDraw() {
+                    if (ctxYLoc < ht-sqBoxSize) {
+                        var rectLoc = 0;
+                        var randTx  = get_random(5);
+
+                        /* A glitter of shadow color*/
+                        ctx.shadowColor = colorToHex(get_random(255),get_random(255),get_random(255));
+                        /* A touch of alpha                                     */
+                        ctx.globalAlpha = ctx.globalAlpha + 0.0019;
+                        /* Each time I TranslateY I increase Y location         */
+                        ctxYLoc         = ctxYLoc + randTx;
+                        /* scaleX, skewX, skewY, scaleY, TranslateX, TranslateY */
+                        ctx.transform(1,0,0,1,0,randTx);
+
+                        while (rectLoc < wd) {
+                            if (0.5 < get_random(1)) {
+                                ctx.fillStyle = colorToHex(get_random(255),get_random(255),get_random(255));
+                                ctx.fillRect(rectLoc,0,sqBoxSize,sqBoxSize);
+                                }
+                            if (0.6 < get_random(1)) {
+                                ctx.globalCompositeOperation = "lighter";
+                                }
+                            else {
+                                ctx.globalCompositeOperation = "xor";
+                                }
+                            rectLoc = rectLoc + sqBoxSize;
+                            }
+                        updateFPS();
+                        }
+                    }
+
+                /* Functions over. Write code to call above when required */
+                if (canvas.getContext) {
+                    var ctx = canvas.getContext("2d");
+
+                    /* Shadow Style     */
+                    ctx.shadowColor = "#FFFFFF";
+                    ctx.shadowBlur  = 5;
+
+                    /* A touch of alpha */
+                    ctx.globalAlpha = 0;
+
+                    draw();
+                    initiateFPS();
+                    window.canvasTimer = setInterval(reDraw, 0.00150);
+                    }
+                else {
+                    printf('<font color = "white"><b id="fps1">No HTML5</b></font>');
+                    }
+                }
+
+            function godsMain() {
+                drawCanvas();
+                alterCanvas();
+                }
+        </script>
+    </head>
+    <body bgcolor = "black">
+        <script>
+            wd = document.body.clientWidth  - 10;
+            if (document.body.clientHeight > document.documentElement.clientHeight) {
+                ht = document.body.clientHeight - 40;
+                }
+            else {
+                ht = document.documentElement.clientHeight - 40;
+                }
+            godsMain();
+        </script>
+    </body>
+</html>
