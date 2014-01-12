@@ -8,7 +8,7 @@ The intent of the tutorial since june 2012 was not only to provide good quality 
 
 As a person systematically reads them one by one I too have enhanced the code for usage and compatability for all the browsers. The primary browser used for testing are Internet explorer 9/10/11 and Chrome. Firefox was used at some point where an issue was identified where object array allocation did not work as expected. The issue has been explained and rectified.
 
-The following are the list of tutorials/simulation/animation available in this learning set.
+The following are the list of tutorials/simulation/animation available in this learning set. (Video explanation here https://www.youtube.com/user/keestu/videos)
 
 a. HTML5 canvas moving 2D circle
 
