@@ -1,0 +1,104 @@
+/*
+    HTML5 canvas 3D tube simulation
+    Copyright (C) 2012  Tappali Ekanathan Keestu (keestu@gmail.com)
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+<!DOCTYPE>
+<html>
+    <head>
+        <title> Canvas </title>
+        <script>
+            function printf(text) {
+                document.writeln(text);
+                }
+            function getRandom(scale) {
+                return (Math.random() * scale);
+                }
+
+            function colorToHex (r,g,b) {
+                var rgb = b | (g << 8) | (r << 16);
+                if (r == 0) {
+                    var rPad = '00';
+                    if (g == 0) {
+                        var gPad = '00';
+                        if (b == 0) {
+                            var bPad = '00';
+                            return '#' + rPad + gPad + +bPad;
+                            }
+                        else {
+                            return '#' + rPad + gPad + rgb.toString(16);
+                            }
+                        }
+                    else {
+                        return '#' + rPad + rgb.toString(16);
+                        }
+                    }
+                return '#' + rgb.toString(16);
+                }
+
+            function drawCanvas () {
+                printf('<canvas id="canvas" width="500" height="500"></canvas>');
+                }
+
+            function alterCanvas() {
+                var x      = 100;
+                var y      = 100;
+                var radius = 50;
+
+                var canvas = document.getElementById("canvas");
+
+                function reset() {
+                    // clear canvas
+                    ctx.clearRect(0,0,500,500);
+                    }
+
+                function reDraw() {
+                    if (!ctx.isPointInPath(300,500)) {
+                        x = x + 1;
+                        y = y + 2;
+
+                        ctx.strokeStyle = colorToHex(getRandom(255),getRandom(255),getRandom(255));
+                        ctx.lineWidth   = 10;
+
+                        ctx.beginPath();
+                        ctx.arc(x, y, radius, 0, Math.PI * 2, false);
+                        ctx.closePath();
+
+                        ctx.stroke();
+                        }
+                    }
+
+                /* Functions over. Write code to call above when required */
+                if (canvas.getContext) {
+                    var ctx            = canvas.getContext("2d");
+                    ctx.globalAlpha    = 0.2;
+                    window.canvasTimer = setInterval(reDraw, 20);
+                    }
+                else {
+                    printf('<font color = "white"><b id="fps1">No HTML5</b></font>');
+                    }
+                }
+
+            function godsMain() {
+                drawCanvas();
+                alterCanvas();
+                }
+        </script>
+    </head>
+    <body bgcolor = "black">
+        <script>
+            godsMain();
+        </script>
+    </body>
+</html>
